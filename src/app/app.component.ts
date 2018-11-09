@@ -1,4 +1,8 @@
 import { Component } from '@angular/core';
+import { IFormState } from './components/form/form.component';
+import { WikipediaService } from './services/wikipedia.service';
+import { Observable } from 'rxjs';
+
 
 @Component({
   selector: 'app-root',
@@ -6,5 +10,17 @@ import { Component } from '@angular/core';
   styleUrls: ['./app.component.scss']
 })
 export class AppComponent {
-  title = 'wiki-person-info-checker';
+  public personInfo$: Observable<any>;
+  public link:        string;
+
+  constructor(private _wikiService: WikipediaService) {}
+
+  formSubmitHandler({ link }: IFormState) {
+    this.link = link;
+    this.updatePerson(link);
+  }
+
+  updatePerson(link: string) {
+    this.personInfo$ = this._wikiService.getPagesInfo(link);
+  }
 }

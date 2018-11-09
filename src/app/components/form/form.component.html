@@ -1,0 +1,12 @@
+<form [formGroup]="form" (ngSubmit)="submitHandler(form)" class="form">
+  <mat-form-field>
+    <input type="text" matInput formControlName="link" name="link">
+    <mat-error *ngIf="form.controls.link.hasError('required')">
+      Link is required
+    </mat-error>
+    <mat-error *ngIf="form.controls.link.hasError('pattern')">
+      Please enter a wikipedia link
+    </mat-error>
+  </mat-form-field>
+  <button mat-button >Check</button>
+</form>
