@@ -4,7 +4,7 @@
 
 export const environment = {
   production: false,
-  API_URL: 'https://wikipedia.org/w/api.php?\
+  API_URL: 'https://cors-anywhere.herokuapp.com/wikipedia.org/w/api.php?\
             action=query&origin=http://localhost:4200&prop=revisions&rvprop=content&format=json&formatversion=2&titles='
 };
 

@@ -1,21 +1,25 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 
-import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
+import { Observable, forkJoin, from, of } from 'rxjs';
+import { map, switchMap } from 'rxjs/operators';
 
 import { environment } from 'src/environments/environment';
 
-import getFieldFromWikiPageContent from '../helpers/getFieldFromWikiPageContent';
+import { WikiParserService } from './wiki-parser.service';
+
 @Injectable({
   providedIn: 'root'
 })
 export class WikipediaService {
   private _titleReg: RegExp = /^https:\/\/(\w+\.)?wikipedia.org\/wiki\/(.*)$/i;
+  private _fields = [ 'spouse', 'parents', 'children' ];
+
   public API_URL: string = environment.API_URL;
 
   constructor(
-    private _http: HttpClient
+    private _http: HttpClient,
+    private _wikiParser: WikiParserService
   ) {}
 
   /**
@@ -24,35 +28,77 @@ export class WikipediaService {
    */
   getPagesInfo(link: string): Observable<any> {
     const title = this.getWikipediaPageTitle(link);
-    const headers = new HttpHeaders({
-      'Content-Type': 'application/json; charset=UTF-8'
-    });
 
-    return this._http.get<any>(this.API_URL + title, { headers }).pipe(
+    return this._http.get<any>(this.API_URL + title).pipe(
       map(res => res.query.pages[0].revisions[0].content),
-      map(content => content.replace('\n', '')),
-      map(content => ({
-        supose: this._getSpouse(content),
-        children: this._getChildren(content),
-        parents: this._getParents(content),
-      }))
+      map(content => {
+        return this._fields
+          .map(fieldName => ({
+            fieldName,
+            fieldContent: this._wikiParser.getFieldPageContent(content, fieldName)
+          }))
+          .map((field) => {
+            if (field.fieldContent) {
+              return { ...field, fieldContent: this._wikiParser.parseField(field.fieldContent) };
+            }
+            return field;
+          })
+          .reduce((acc, { fieldName, fieldContent }) => {
+            return { ...acc, [fieldName]: fieldContent };
+          }, {});
+      }),
+      switchMap(personInfo => {
+        return forkJoin(this._fields.map(fieldName => {
+          const fieldVal = personInfo[fieldName];
+
+          if (Array.isArray(fieldVal)) {
+            return forkJoin(fieldVal.map((field: string) => {
+              if (field.indexOf('[[') !== -1) {
+                const titleMatch = (/\[\[(.*)\]\]/g).exec(field);
+                return this.getPageShortInfo(titleMatch[1]);
+              } else {
+                return of({ fieldName, value: field });
+              }
+            })).pipe(
+              map(value => ({ fieldName, value }))
+            );
+          } else {
+            return of({ fieldName, value: fieldVal });
+          }
+
+        }));
+      })
     );
   }
 
-  getWikipediaPageTitle(link: string) {
-    return link.match(this._titleReg)[2];
+  getPageShortInfo(link: string) {
+    const title = this.getWikipediaPageTitle(link);
+
+    return this._http.get<any>(this.API_URL + title).pipe(
+      map(res => res.query.pages[0].revisions[0].content),
+      map(content => {
+        return this._fields
+          .map(fieldName => ({
+            fieldName,
+            fieldContent: this._wikiParser.getFieldPageContent(content, fieldName)
+          }))
+          .map((field) => {
+            if (field.fieldContent) {
+              return { ...field, fieldContent: this._wikiParser.parseField(field.fieldContent) };
+            }
+            return field;
+          })
+          .reduce((acc, { fieldName, fieldContent }) => {
+            return { ...acc, [fieldName]: fieldContent };
+          }, {});
+      })
+    );
   }
 
-  private _getSpouse(pageContent: string) {
-    return getFieldFromWikiPageContent(pageContent, 'spouse');
-  }
+  getWikipediaPageTitle(str: string) {
+    const match = str.match(this._titleReg);
 
-  private _getChildren(pageContent: string) {
-    return getFieldFromWikiPageContent(pageContent, 'children');
-  }
-
-  private _getParents(pageContent: string) {
-    return getFieldFromWikiPageContent(pageContent, 'parents');
+    return match ? match[2] : str;
   }
 
 }
