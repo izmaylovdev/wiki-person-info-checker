@@ -7,6 +7,11 @@ import { map, switchMap } from 'rxjs/operators';
 import { environment } from 'src/environments/environment';
 
 import { WikiParserService } from './wiki-parser.service';
+import IPersonInfo from '../models/person-info..model';
+import IFamilyMember from '../models/family-member.model';
+import CheckResults from '../models/check-results.model';
+
+type FieldName = 'spouse' | 'parents' | 'children';
 
 @Injectable({
   providedIn: 'root'
@@ -47,27 +52,45 @@ export class WikipediaService {
             return { ...acc, [fieldName]: fieldContent };
           }, {});
       }),
-      switchMap(personInfo => {
-        return forkJoin(this._fields.map(fieldName => {
+      switchMap((personInfo: IPersonInfo) => {
+        return forkJoin(this._fields.map((fieldName: FieldName) => {
           const fieldVal = personInfo[fieldName];
 
           if (Array.isArray(fieldVal)) {
-            return forkJoin(fieldVal.map((field: string) => {
-              if (field.indexOf('[[') !== -1) {
-                const titleMatch = (/\[\[(.*)\]\]/g).exec(field);
-                return this.getPageShortInfo(titleMatch[1]);
-              } else {
-                return of({ fieldName, value: field });
-              }
+            return forkJoin(fieldVal.map((name: string) => {
+
+              const pageTitle: string = this.getPageTitle(name);
+              return pageTitle ?
+                this.getPageShortInfo(pageTitle).pipe(map(res => ({ name: pageTitle, value: res } as IFamilyMember))) :
+                of({ name: name, status: 'Can\'t check' } as CheckResults);
+
             })).pipe(
               map(value => ({ fieldName, value }))
             );
           } else {
-            return of({ fieldName, value: fieldVal });
+            return of([{ fieldName, value: fieldVal }]);
           }
 
         }));
-      })
+      }),
+      // map(((fieldsArr: { filedName: FieldName; value: CheckResults | IFamilyMember; }[])) => {
+      //   return fieldsArr.reduce((res, field) => {
+      //     res[field.fieldName] = [];
+
+      //     switch (field.fieldName) {
+      //       case('children'):
+      //         if ()
+      //         const isValid = this.checkChildrens(title, field.value);
+      //         res[field.fieldName].push({
+      //           name: field.value.name,
+      //           status: isValid ? 'Matched' : 'Does not match'
+      //         });
+      //         break;
+      //       default:
+      //         return res;
+      //     }
+      //   }, {} as CheckResults);
+      // })
     );
   }
 
@@ -101,4 +124,22 @@ export class WikipediaService {
     return match ? match[2] : str;
   }
 
+  getPageTitle(field) {
+    const match: RegExpMatchArray = (/\[\[(.*)\]\]/g).exec(field);
+    return match && match[1];
+  }
+
+  private checkChildrens(title: string, childrensInfo: IFamilyMember[]) {
+    return childrensInfo.reduce((res, childrenInfo) => {
+      return [ ...res, {
+        name: childrenInfo.name,
+        status: this.checkChildren(title, childrenInfo.value)
+      }];
+    }, []);
+  }
+
+  private checkChildren(title: string, childrenInfo: IPersonInfo): boolean {
+    const parsedTitle = title.replace('_', ' ');
+    return (childrenInfo.parents as string[]).some(parent => parent.indexOf(parsedTitle) !== -1);
+  }
 }
