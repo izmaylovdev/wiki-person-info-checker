@@ -1,5 +1,13 @@
 <div class="container">
   <app-form (formSubmit)="formSubmitHandler($event)"></app-form>
-  <!-- <app-person-data></app-person-data> -->
-  <pre *ngIf="link">{{ personInfo$ | async | json: 'pretty' }}</pre>
+  <div *ngIf="link">
+    <ng-container *ngIf="personInfo$ | async as personInfo else loader">
+      <div *ngFor="let group of personInfo">
+        <h2>{{group.groupName}}</h2>
+        <app-table [data]="group.members"></app-table>
+      </div>
+    </ng-container>
+  </div>
 </div>
+
+<ng-template #loader>Loading...</ng-template>

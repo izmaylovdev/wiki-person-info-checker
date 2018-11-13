@@ -2,6 +2,7 @@ import { Component } from '@angular/core';
 import { IFormState } from './components/form/form.component';
 import { WikipediaService } from './services/wikipedia.service';
 import { Observable } from 'rxjs';
+import IFamilyMemberGroup from './models/family-group.model';
 
 
 @Component({
@@ -10,7 +11,7 @@ import { Observable } from 'rxjs';
   styleUrls: ['./app.component.scss']
 })
 export class AppComponent {
-  public personInfo$: Observable<any>;
+  public personInfo$: Observable<IFamilyMemberGroup[]>;
   public link:        string;
 
   constructor(private _wikiService: WikipediaService) {}
@@ -21,6 +22,6 @@ export class AppComponent {
   }
 
   updatePerson(link: string) {
-    this.personInfo$ = this._wikiService.getPagesInfo(link);
+    this.personInfo$ = this._wikiService.getPageInfo(link);
   }
 }

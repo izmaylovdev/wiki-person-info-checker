@@ -17,7 +17,7 @@ export class FormComponent {
 
   constructor(private _fb: FormBuilder) {
     this.form = this._fb.group({
-      link: ['https://en.wikipedia.org/wiki/George_H._W._Bush', Validators.compose([
+      link: ['', Validators.compose([
           Validators.required,
           Validators.pattern(/^https:\/\/(\w+\.)?wikipedia.org\/wiki\/(.*)$/)
       ])]

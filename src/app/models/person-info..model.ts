@@ -1,6 +1,6 @@
 export default interface IPersonInfo {
-    spouse: string | string[];
-    parents: string | string[];
-    children: string | string[];
+    spouse: string[];
+    parents: string[];
+    children: string[];
 }
 

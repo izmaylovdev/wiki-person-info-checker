@@ -1,4 +1,4 @@
-export default interface CheckResults {
+export default interface ICheckResults {
     name: string;
     status: string;
 }
